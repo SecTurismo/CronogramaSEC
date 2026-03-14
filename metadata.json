@@ -1,0 +1,5 @@
+{
+  "name": "Novo Cronograma SEC",
+  "description": "Um aplicativo de cronograma anual completo com autenticação Firebase, calendário interativo e personalização visual.",
+  "requestFramePermissions": []
+}
