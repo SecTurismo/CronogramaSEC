@@ -130,6 +130,21 @@ export const Settings = () => {
     }
   }, [settings, hasLoadedSettings]);
 
+  const handleThemeChange = async (newTheme: 'light' | 'dark') => {
+    if (!isAdmin) return;
+    
+    // Update local state
+    setFormData(prev => ({ ...prev, theme: newTheme }));
+    
+    try {
+      // Save to Firestore immediately for global effect
+      const settingsRef = doc(db, 'settings', 'app_config');
+      await setDoc(settingsRef, { theme: newTheme }, { merge: true });
+    } catch (err) {
+      console.error('Erro ao salvar tema globalmente:', err);
+    }
+  };
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     const file = e.target.files?.[0];
     if (!file || !isAdmin) return;
@@ -346,7 +361,7 @@ export const Settings = () => {
                 <div className="flex p-1 bg-[var(--bg-input)] rounded-2xl w-fit">
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, theme: 'light' })}
+                    onClick={() => handleThemeChange('light')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
                       formData.theme === 'light'
                         ? 'bg-[var(--bg-card)] text-primary shadow-sm'
@@ -358,7 +373,7 @@ export const Settings = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, theme: 'dark' })}
+                    onClick={() => handleThemeChange('dark')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
                       formData.theme === 'dark'
                         ? 'bg-[var(--border-strong)] text-[var(--text-main)] shadow-sm'

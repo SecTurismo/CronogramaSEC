@@ -48,6 +48,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       link.href = data.faviconUrl;
     }
+
+    // Apply global theme
+    if (data.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, []);
 
   const refreshSettings = useCallback(() => {
