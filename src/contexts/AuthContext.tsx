@@ -24,24 +24,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const applySettings = useCallback((data: any) => {
-    // Merge with localStorage images
-    const localImages = {
-      faviconUrl: localStorage.getItem('favicon'),
-      logoTitleUrl: localStorage.getItem('logoCabecalho'),
-      logoLoginTopUrl: localStorage.getItem('logoLoginTopo'),
-      loginBackgroundUrl: localStorage.getItem('fundoLogin'),
-      logoLoginBottomUrl: localStorage.getItem('logoLoginBase'),
-      headerImageUrl: localStorage.getItem('bannerCabecalho'),
-    };
-
-    const mergedData = { ...data };
-    Object.entries(localImages).forEach(([key, value]) => {
-      if (value) mergedData[key] = value;
-    });
-
-    if (mergedData.primaryColor) {
-      document.documentElement.style.setProperty('--primary-color', mergedData.primaryColor);
-      const hex = mergedData.primaryColor.replace('#', '');
+    if (data.primaryColor) {
+      document.documentElement.style.setProperty('--primary-color', data.primaryColor);
+      const hex = data.primaryColor.replace('#', '');
       const r = parseInt(hex.substring(0, 2), 16);
       const g = parseInt(hex.substring(2, 4), 16);
       const b = parseInt(hex.substring(4, 6), 16);
@@ -50,32 +35,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     }
 
-    if (mergedData.tabTitle || mergedData.appName) {
-      document.title = mergedData.tabTitle || mergedData.appName;
+    if (data.tabTitle || data.appName) {
+      document.title = data.tabTitle || data.appName;
     }
 
-    if (mergedData.faviconUrl) {
+    if (data.faviconUrl) {
       let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
       if (!link) {
         link = document.createElement('link');
         link.rel = 'icon';
         document.head.appendChild(link);
       }
-      link.href = mergedData.faviconUrl;
+      link.href = data.faviconUrl;
     }
   }, []);
 
   const refreshSettings = useCallback(() => {
     const unsubscribeSettings = onSnapshot(doc(db, 'settings', 'app_config'), (doc) => {
-      const localImages = {
-        faviconUrl: localStorage.getItem('favicon'),
-        logoTitleUrl: localStorage.getItem('logoCabecalho'),
-        logoLoginTopUrl: localStorage.getItem('logoLoginTopo'),
-        loginBackgroundUrl: localStorage.getItem('fundoLogin'),
-        logoLoginBottomUrl: localStorage.getItem('logoLoginBase'),
-        headerImageUrl: localStorage.getItem('bannerCabecalho'),
-      };
-
       let data: any = {
         appName: 'Meu Cronograma',
         primaryColor: '#3b82f6',
@@ -85,29 +61,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         data = { ...data, ...doc.data() };
       }
 
-      // Merge with local storage
-      Object.entries(localImages).forEach(([key, value]) => {
-        if (value) data[key] = value;
-      });
-
       setSettings(data);
       applySettings(data);
       setLoading(false);
     }, (err) => {
       console.error("Error fetching settings:", err);
-      // Even if firestore fails, load local images
-      const localImages = {
-        faviconUrl: localStorage.getItem('favicon'),
-        logoTitleUrl: localStorage.getItem('logoCabecalho'),
-        logoLoginTopUrl: localStorage.getItem('logoLoginTopo'),
-        loginBackgroundUrl: localStorage.getItem('fundoLogin'),
-        logoLoginBottomUrl: localStorage.getItem('logoLoginBase'),
-        headerImageUrl: localStorage.getItem('bannerCabecalho'),
-      };
       const data = {
         appName: 'Meu Cronograma',
         primaryColor: '#3b82f6',
-        ...localImages
       };
       setSettings(data);
       applySettings(data);

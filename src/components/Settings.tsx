@@ -130,26 +130,39 @@ export const Settings = () => {
     }
   }, [settings, hasLoadedSettings]);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: string) => {
     const file = e.target.files?.[0];
     if (!file || !isAdmin) return;
 
+    // Check file size (Firestore limit is 1MB, but we should stay well below for performance)
+    if (file.size > 800000) {
+      setErrorMessage('A imagem é muito grande. O limite é de 800KB para garantir o salvamento global.');
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 4000);
+      return;
+    }
+
+    setSettingsLoading(true);
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const base64String = reader.result as string;
-      const storageKey = IMAGE_KEYS_MAP[field];
       
-      if (storageKey) {
-        localStorage.setItem(storageKey, base64String);
-        
+      try {
         // Update local state for immediate feedback
         setFormData(prev => ({ ...prev, [field]: base64String }));
         
-        // Refresh global settings
-        refreshSettings();
+        // Save to Firestore immediately for global persistence
+        const settingsRef = doc(db, 'settings', 'app_config');
+        await setDoc(settingsRef, { [field]: base64String }, { merge: true });
         
         setSaveStatus('success');
         setTimeout(() => setSaveStatus('idle'), 2000);
+      } catch (err: any) {
+        console.error('Erro ao salvar imagem globalmente:', err);
+        setErrorMessage('Erro ao salvar imagem globalmente. Verifique o tamanho.');
+        setSaveStatus('error');
+      } finally {
+        setSettingsLoading(false);
       }
     };
     reader.readAsDataURL(file);
@@ -167,19 +180,9 @@ export const Settings = () => {
     setErrorMessage('');
     
     try {
-      // Clean data for Firestore (only non-image settings)
-      const cleanData: Record<string, any> = {};
-      const imageFields = Object.keys(IMAGE_KEYS_MAP);
-      
-      Object.entries(formData).forEach(([key, value]) => {
-        if (!imageFields.includes(key) && value !== undefined && value !== null) {
-          cleanData[key] = value;
-        }
-      });
-
-      // Save to Firestore
+      // Save all current formData to Firestore
       const settingsRef = doc(db, 'settings', 'app_config');
-      await setDoc(settingsRef, cleanData, { merge: true });
+      await setDoc(settingsRef, formData, { merge: true });
       
       setSaveStatus('success');
       setTimeout(() => setSaveStatus('idle'), 3000);
@@ -196,19 +199,22 @@ export const Settings = () => {
   const handleRemoveLogo = async (field: string) => {
     if (!isAdmin) return;
     
+    setSettingsLoading(true);
     try {
-      const storageKey = IMAGE_KEYS_MAP[field];
-      if (storageKey) {
-        localStorage.removeItem(storageKey);
-        setFormData(prev => ({ ...prev, [field]: '' }));
-        refreshSettings();
-        setSaveStatus('success');
-        setTimeout(() => setSaveStatus('idle'), 3000);
-      }
+      setFormData(prev => ({ ...prev, [field]: '' }));
+      
+      // Remove from Firestore
+      const settingsRef = doc(db, 'settings', 'app_config');
+      await setDoc(settingsRef, { [field]: '' }, { merge: true });
+      
+      setSaveStatus('success');
+      setTimeout(() => setSaveStatus('idle'), 3000);
     } catch (err) {
       console.error(err);
       setSaveStatus('error');
       setErrorMessage('Erro ao remover logo.');
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
