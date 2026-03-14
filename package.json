@@ -13,7 +13,7 @@
     "deploy": "gh-pages -d dist -t true"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
