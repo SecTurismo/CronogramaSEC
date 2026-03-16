@@ -81,7 +81,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       applySettings(data);
       setLoading(false);
     });
-    return unsubscribeSettings;
+
+    // Fallback timeout for loading state in case onSnapshot hangs (common on some mobile networks/browsers)
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+    }, 5000);
+
+    return () => {
+      unsubscribeSettings();
+      clearTimeout(timeoutId);
+    };
   }, [applySettings]);
 
   useEffect(() => {

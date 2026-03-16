@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, List as ListIcon, LayoutGrid, Edit2, Trash2, Users, Loader2, Clock } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar as CalendarIcon, List as ListIcon, LayoutGrid, Edit2, Trash2, Users, Loader2, Clock, Share2 } from 'lucide-react';
 import { collection, query, where, onSnapshot, Timestamp, deleteDoc, doc, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -86,6 +86,39 @@ export const Calendar = ({ onAddActivity, onEditActivity }: CalendarProps) => {
       case 'cancelled': return 'Cancelada';
       case 'pending': return 'Pendente';
       default: return status;
+    }
+  };
+
+  const handleShare = async (activity: any) => {
+    const activityDate = activity.date?.toDate?.() || new Date();
+    const dateStr = format(activityDate, "dd/MM/yyyy");
+    const timeStr = format(activityDate, "HH:mm");
+    const priorityStr = getPriorityLabel(activity.priority);
+    const collaborators = getCollaboratorNames(activity.collaboratorIds).split(', ').join('\n');
+
+    const message = `*${activity.title}*\n\n` +
+      `*Descrição:* ${activity.description || 'Sem descrição'}\n\n` +
+      `*Equipe envolvida:*\n${collaborators || 'Nenhum'}\n\n` +
+      `*Data:* ${dateStr}\n` +
+      `*Horário:* ${timeStr}\n` +
+      `*Prioridade:* ${priorityStr}`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedMessage}`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: activity.title,
+          text: message,
+        });
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          window.open(whatsappUrl, '_blank');
+        }
+      }
+    } else {
+      window.open(whatsappUrl, '_blank');
     }
   };
 
@@ -397,7 +430,7 @@ export const Calendar = ({ onAddActivity, onEditActivity }: CalendarProps) => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <h4 className="font-bold text-[var(--text-main)] group-hover:text-primary transition-colors truncate">{activity.title}</h4>
+                      <h4 className="font-bold text-[var(--text-main)] group-hover:text-primary transition-colors break-words">{activity.title}</h4>
                       {activity.description && <p className="text-xs md:text-sm text-[var(--text-muted)] mt-1">{activity.description}</p>}
                       {activity.recurrence && activity.recurrence !== 'none' && (
                         <p className="text-[8px] font-black text-primary uppercase tracking-widest mt-2 flex items-center gap-1">
@@ -428,6 +461,13 @@ export const Calendar = ({ onAddActivity, onEditActivity }: CalendarProps) => {
                           </button>
                         </div>
                       )}
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleShare(activity); }}
+                        className="p-1.5 md:p-2 rounded-lg text-[var(--text-muted)]/50 hover:text-primary hover:bg-primary/5 transition-all active:scale-90"
+                        title="Compartilhar atividade"
+                      >
+                        <Share2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      </button>
                     </div>
                   </div>
                   <div className="flex flex-col gap-3 mt-4">

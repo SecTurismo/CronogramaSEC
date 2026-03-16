@@ -31,7 +31,7 @@ function AppContent() {
     if (user || teamMember) {
       // Check if we should show push notification prompt
       const hasPrompted = localStorage.getItem('push_prompted');
-      if (!hasPrompted && Notification.permission === 'default') {
+      if (!hasPrompted && typeof Notification !== 'undefined' && Notification.permission === 'default') {
         setTimeout(() => setShowPushPrompt(true), 5000);
       }
       
@@ -126,21 +126,27 @@ function AppContent() {
           where('date', '>=', Timestamp.fromDate(start))
         );
         
-        const notifSnapshot = await getDocs(notifQ);
-        
-        if (notifSnapshot.empty) {
-          await addDoc(collection(db, 'notifications'), {
-            userId: teamMember.id,
-            activityId: activity.id,
-            title: 'Atividade para Hoje!',
-            message: `Você tem a atividade "${activity.title}" agendada para hoje.`,
-            date: Timestamp.fromDate(today),
-            type: 'reminder',
-            status: 'pending',
-            createdAt: Timestamp.now()
-          });
+        try {
+          const notifSnapshot = await getDocs(notifQ);
+          
+          if (notifSnapshot.empty) {
+            await addDoc(collection(db, 'notifications'), {
+              userId: teamMember.id,
+              activityId: activity.id,
+              title: 'Atividade para Hoje!',
+              message: `Você tem a atividade "${activity.title}" agendada para hoje.`,
+              date: Timestamp.fromDate(today),
+              type: 'reminder',
+              status: 'pending',
+              createdAt: Timestamp.now()
+            });
+          }
+        } catch (err) {
+          console.error("Error checking/creating notification:", err);
         }
       }
+    }, (err) => {
+      console.error("Error in today's activities snapshot:", err);
     });
 
     return () => unsubscribe();
@@ -156,13 +162,15 @@ function AppContent() {
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setUnreadCount(snapshot.size);
+    }, (err) => {
+      console.error("Error in unread notifications snapshot:", err);
     });
     return () => unsubscribe();
   }, [teamMember]);
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-main)]">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-[var(--bg-main)]">
         <Loader2 className="w-10 h-10 text-primary animate-spin" />
       </div>
     );
@@ -193,7 +201,7 @@ function AppContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[var(--bg-main)] flex flex-col relative transition-colors duration-300">
+    <div className="min-h-[100dvh] bg-[var(--bg-main)] flex flex-col relative transition-colors duration-300">
       <header 
         className="sticky top-0 z-40 bg-[var(--bg-card)]/90 backdrop-blur-xl border-b border-[var(--border-color)] px-4 md:px-6 py-3 md:py-5 flex items-center justify-center bg-cover bg-center bg-no-repeat"
         style={settings?.headerImageUrl ? { backgroundImage: `url(${settings.headerImageUrl})` } : {}}
